@@ -6,7 +6,7 @@ The modifications are specific to setting up the cluster using Vagrant and might
 Additionally, I've added a step in `scripts/install_master.sh` to output the token join command to a file so that it can be run automatically during the installation of the worker node.
 
 
-You can learn more about Vagrant[here](https://learn.hashicorp.com/collections/vagrant/getting-started)
+You can learn more about Vagrant [here](https://learn.hashicorp.com/collections/vagrant/getting-started)
 
 You can start the cluster using `vagrant up` and refresh the cluster using `vagrant halt && vagrant destroy -f && vagrant up`
 
