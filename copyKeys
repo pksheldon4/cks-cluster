@@ -1,0 +1,2 @@
+cp .vagrant/machines/ckstest-master/virtualbox/private_key ~/.ssh/ckstest-master.key
+cp .vagrant/machines/ckstest-worker/virtualbox/private_key ~/.ssh/ckstest-worker.key
