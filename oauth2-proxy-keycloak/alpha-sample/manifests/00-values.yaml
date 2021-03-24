@@ -1,0 +1,11 @@
+#@data/values
+---
+groups: sample
+fqdn: sample.192.168.11.240.nip.io
+
+proxy:
+  env:
+    OAUTH2_PROXY_SCOPE: openid #! oauth2-proxy for keycloak automatically include api scope
+    OAUTH2_PROXY_CLIENT_ID: login-app
+    OAUTH2_PROXY_CLIENT_SECRET: e712ef31-29c6-48f4-bc47-d98da0248b5e #! replace with value generated when setting up Keycloak client
+    OAUTH2_PROXY_COOKIE_SECRET: TlpjVXV4Q1FvWHpBUWZZakkyR3NCQT09
