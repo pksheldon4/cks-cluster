@@ -1,0 +1,2 @@
+#!/bin/bash
+kapp deploy -a sample -f <(kbld -f <(ytt -f manifests)) -c
