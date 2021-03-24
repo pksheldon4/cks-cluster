@@ -1,0 +1,13 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: keycloak-httpproxy
+spec:
+  virtualhost:
+    fqdn: keycloak.192.168.11.240.nip.io
+    #    tls:
+    # secretName: tls-ingress-secret
+  routes:
+    - services:
+        - name: keycloak
+          port: 80

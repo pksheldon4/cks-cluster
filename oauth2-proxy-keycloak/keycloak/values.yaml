@@ -1,0 +1,10 @@
+auth:
+  adminUser: admin
+  adminPassword: admin
+service:
+  type: ClusterIP
+extraEnvVars:
+  - name: KEYCLOAK_FRONTEND_URL
+    value: https://keycloak.vagrant.local/auth
+  - name: KEYCLOAK_PROXY_ADDRESS_FORWARDING
+    value: "true"

@@ -1,0 +1,11 @@
+---
+apiVersion: kbld.k14s.io/v1alpha1
+kind: Config
+minimumRequiredVersion: 0.24.0
+overrides:
+  - image: sample-image
+    newImage: pksheldon4/java-sample:1.0
+    preresolved: false
+  - image: oauth2-proxy
+    newImage: bitnami/oauth2-proxy:7
+    preresolved: true
