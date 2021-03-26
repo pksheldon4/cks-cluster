@@ -11,27 +11,9 @@ heritage: kapp
 #@ return "default"
 #@ end
 
-#@ def proxy_config():
-upstreams:
-  - id: sample
-    uri: http://localhost:8080
-    path: "/"
-injectRequestHeaders:
-  - name: X-Forwarded-Groups
-    values:
-      - claim: groups
-  - name: X-Forwarded-User
-    values:
-      - claim: user
-  - name: X-Forwarded-Email
-    values:
-      - claim: email
-  - name: X-Forwarded-Preferred-Username
-    values:
-      - claim: preferred_username
-  - name: X-Forwarded-Access-Token
-    values:
-      - claim: access_token
+#@ def config():
+#! return "keycloak-proxy-config"
+#@ return "gitlab-proxy-config"
 #@ end
 
 apiVersion: v1
@@ -42,27 +24,87 @@ metadata:
   namespace: #@ namespace()
 ---
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
   labels: #@ labels()
-  name: sample-proxy-config
+  name: alpha-config
   namespace: #@ namespace()
   annotations:
     kapp.k14s.io/versioned: ""
 data:
-  oauth2_proxy.yaml: #@ base64.encode(yaml.encode(proxy_config()))
+  oauth2_proxy.yaml: |
+    upstreams:
+    - id: sample
+      uri: http://localhost:8080
+      path: "/"
+    server:
+      bindAddress: "0.0.0.0:4180"
+    injectRequestHeaders:
+      - name: X-Forwarded-Groups
+        values:
+          - claim: groups
+      - name: X-Forwarded-User
+        values:
+          - claim: user
+      - name: X-Forwarded-Email
+        values:
+          - claim: email
+      - name: X-Forwarded-Preferred-Username
+        values:
+          - claim: preferred_username
+      - name: X-Forwarded-Access-Token
+        values:
+          - claim: access_token
 ---
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
   labels: #@ labels()
-  name: sample-proxy-secrets
+  name: gitlab-proxy-config
   namespace: #@ namespace()
+  annotations:
+    kapp.k14s.io/versioned: ""
 data:
-  OAUTH2_PROXY_CLIENT_ID: #@ base64.encode(data.values.proxy.env.OAUTH2_PROXY_CLIENT_ID)
-  OAUTH2_PROXY_CLIENT_SECRET: #@ base64.encode(data.values.proxy.env.OAUTH2_PROXY_CLIENT_SECRET)
-  OAUTH2_PROXY_COOKIE_SECRET: #@ base64.encode(data.values.proxy.env.OAUTH2_PROXY_COOKIE_SECRET)
-  OAUTH2_PROXY_SCOPE: #@ base64.encode(data.values.proxy.env.OAUTH2_PROXY_SCOPE)
+  oauth2_proxy.yaml: |
+    provider="gitlab"
+    scope="openid email profile"
+    ssl_insecure_skip_verify=true    
+    email_domains=["*"]
+    silence_ping_logging=true
+    skip_provider_button=true
+    cookie_secure=false
+    gitlab_groups=["oauth2-test-group"]
+    client_id=""
+    client_secret=""
+    cookie_secret=""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels: #@ labels()
+  name: keycloak-proxy-config
+  namespace: #@ namespace()
+  annotations:
+    kapp.k14s.io/versioned: ""
+data:
+  oauth2_proxy.yaml: |
+    provider="keycloak"
+    scope="openid"
+    ssl_insecure_skip_verify=true
+    email_domains=["*"]
+    silence_ping_logging=true
+    redirect_url="http://sample.192.168.11.240.nip.io/oauth2/callback"
+    cookie_secure=false
+    allowed_groups=["/sample","/othergroup"]
+    skip_provider_button=true
+    oidc_issuer_url="http://keycloak.192.168.11.240.nip.io/auth/realms/demo"
+    login_url="http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-onnect/auth"
+    redeem_url="http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/token"
+    profile_url="http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/userinfo"
+    validate_url="http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/userinfo"
+    client_id=""
+    client_secret=""
+    cookie_secret=""
 ---
 apiVersion: v1
 kind: Service
@@ -107,26 +149,8 @@ spec:
           image: oauth2-proxy
           imagePullPolicy: Always
           args:
-            - --http-address=0.0.0.0:4180
-            - --alpha-config=/etc/oauth2_proxy/oauth2_proxy.yaml
-            - --ssl-insecure-skip-verify
-            - --email-domain=*
-            - --silence-ping-logging
-            - --redirect-url=http://sample.192.168.11.240.nip.io/oauth2/callback
-            - --provider=keycloak
-            - --cookie-secure=false
-            #! ### Can allow multiple groups by repeating the tag
-            - --allowed-group=/sample
-            - --allowed-group=/othergroup
-            - --skip-provider-button=true
-            - --oidc-issuer-url=http://keycloak.192.168.11.240.nip.io/auth/realms/demo
-            - --login-url=http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/auth
-            - --redeem-url=http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/token
-            - --profile-url=http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/userinfo
-            - --validate-url=http://keycloak.192.168.11.240.nip.io/auth/realms/demo/protocol/openid-connect/userinfo
-          envFrom:
-            - secretRef:
-                name: sample-proxy-secrets
+            - --alpha-config=/etc/oauth2_proxy_alpha/oauth2_proxy.yaml
+            - --config=/etc/oauth2_proxy/oauth2_proxy.yaml
           ports:
             - containerPort: 4180
               name: http
@@ -149,8 +173,10 @@ spec:
             periodSeconds: 10
           resources: {}
           volumeMounts:
-            - mountPath: /etc/oauth2_proxy
+            - mountPath: /etc/oauth2_proxy_alpha
               name: alphaconfig
+            - mountPath: /etc/oauth2_proxy
+              name: proxyconfig
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
@@ -158,10 +184,14 @@ spec:
             runAsUser: 1001
             runAsGroup: 1001
       volumes:
-        - secret:
+        - configMap:
             defaultMode: 420
-            secretName: sample-proxy-config
+            name: alpha-config
           name: alphaconfig
+        - configMap:
+            defaultMode: 420
+            name: #@ config()
+          name: proxyconfig
       tolerations: []
 ---
 apiVersion: projectcontour.io/v1
